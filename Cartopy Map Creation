@@ -1,0 +1,206 @@
+import matplotlib.pyplot as plt
+import cartopy.crs as crs
+from cartopy.io.img_tiles import OSM
+from matplotlib.patches import Polygon, Patch
+
+def sort_data(inputdata):
+    """Cleans and sorts the coordinates from inputdata 
+    (natural_neighbourhood_data) into a dictionary and sub-dictionaries.
+
+    Args:
+        inputdata (data_file): set of coordinates.
+
+    Returns:
+        polygon_dict: dictionary of cleaned coordinate data.
+    """
+
+    #defining keys and values for dictionary
+    
+    polygon_dict= {}
+    current_subheading = None
+
+    #defining empty lists
+    
+    datax = []
+    datay = []
+    
+    with open (inputdata, "r") as inputFile:
+
+        #read each line in inputfile
+            
+        for line in inputFile.readlines():
+                
+                #if line starts with #, ignore
+
+                if line.startswith('#'):
+                 continue
+     
+                #if the line contains letters, set it as the current subheading and strip white space
+
+                elif line and line[0].isalpha():
+                  current_subheading = line.strip()
+                
+                #if the line starts with (
+                  
+                elif line and line.startswith('('):
+
+                    #strip white space, and get rid of the opening and closing brackets
+                    
+                    try:
+                        line = line.strip()
+                        line = line.replace('(', '').replace(')', '')
+                    except ValueError as detail:
+                        print("Not a valid Output", detail)
+
+                    #create two lists for the different coordinates using the split and index functions
+                    #turn into floats
+                
+                    linex = (float(line.split(',')[0]))
+                    liney = (float(line.split(',')[1]))
+
+                    #append to main list
+
+                    datax.append((linex))
+                    datay.append((liney))
+
+                # if line starts with [
+
+                elif line and line.startswith ('['):
+
+                    #remove white space and split on the opening and closing brackets
+
+                    line = line.strip()
+                    line = line.split('), (')
+
+                    #for each line
+                   
+                    for coordinates in line:
+
+                        # remove [] and ()
+
+                        coordinates = coordinates.strip('[(').strip(')]')
+
+                        #split on the ',' , then seperate the x and y coordinates through indexing, turn into floats and append to main lists
+                       
+                        coordinateslist = coordinates.split(', ')
+                        datax.append((float(coordinateslist[0])))
+                        datay.append((float(coordinateslist[1])))
+                  
+                # if line only contains white space, add the current subheading with the relevant coordinates to the list.
+
+                elif line.isspace():
+                    polygon_dict[current_subheading] = ((datax, datay))
+
+                    # making sure the list is empty to avoid it building up.
+
+                    datax = []
+                    datay = []
+
+    
+                else:
+                     print('error')
+                     
+        
+        return polygon_dict
+  
+if __name__ == '__main__':
+    polygon_dict = sort_data('natural_neighbourhoods.dat')
+    print (polygon_dict)
+
+
+def test(polygon_dict):
+    """Testing if the code outputs the correct data by testing the length of polygon_dict.
+    (I found this simpler than unit testing on this occasion)
+
+    Args:
+        polygon_dict (dict): cleaned coordinate data in a dictionary
+    """
+    
+    # if length is 154
+    if (len(polygon_dict) == 154):
+            print("correct output- the length is 154")
+            
+    # if length is not 154
+    elif (len(polygon_dict) != 154):
+            print("False- something has gone wrong in function sort_data")
+    
+if __name__ == '__main__':
+    test(polygon_dict)
+
+
+def main(polygon_dict):
+    """Creates a cartopy map based on the output 
+    from the function sort_data. Format inspired by https://scitools.org.uk/cartopy/docs/v0.18/gallery/tube_stations.html 
+    and the Cartopy websites, including https://scitools.org.uk/cartopy/docs/v0.15/matplotlib/intro.html
+
+    Args:
+        polygon_dict (dictionary): a dictionary of
+        coordinate data.
+    """
+    #turning into British Coordinate Data
+    bng = crs.OSGB()
+
+    #retrieving OSM Imagery
+    mapimage = OSM()
+
+    #plotting figure to suitable parameters (I chose 15,20)
+    fig = plt.figure(figsize=(15, 20))
+
+    #adding subplots and making sure it is in the British National Grid Format
+    ax = fig.add_subplot(1, 1, 1, projection=bng)
+
+    zoomlevel = 8000
+    movenorth = -6000
+
+    # Calculating extent based on the polygon areas- so the map is zoomed in to around the data
+    #with alterations such as zoom level and moving the map position more northerly
+    min_east = min(min(datax) for datax, datay in polygon_dict.values()) - zoomlevel
+    max_east = max(max(datax) for datax, datay in polygon_dict.values()) + zoomlevel
+    min_north = min(min(datay) for datax, datay in polygon_dict.values()) - zoomlevel + movenorth
+    max_north = max(max(datay) for datax, datay in polygon_dict.values()) + zoomlevel + movenorth
+
+    #setting extent based on the east and north values
+    ax.set_extent((min_east, max_east, min_north, max_north), crs=bng)
+
+    #setting imagery to 12 to not crash computer and alpha to 0.6 to make map slightly transparent
+    ax.add_image(mapimage, 12, alpha=0.6)
+
+    #formatting the map colour for each point in the polygon_dict dictionary
+    # I chose tab20 for the most variation
+    mapcolour = plt.cm.get_cmap('tab20', len(polygon_dict))
+
+    legend_names = []
+
+    #for each subheading and associated coordinates in the dictionary 
+
+    for areas, (location, (datax, datay)) in enumerate(polygon_dict.items()):
+        color = mapcolour(areas)
+        
+        # Creating and formatting the polygons
+        polygons = Polygon(list(zip(datax, datay)), facecolor=color, alpha=0.6, 
+                          edgecolor='black', transform=bng)
+        ax.add_patch(polygons)
+
+        #Adding each subheading to a legend list
+        legend_names.append(Patch(facecolor=color, edgecolor='black', 
+                                  # creating the polygon label_names based on the Patch matplotlib import
+                                   label =f'{areas + 1} = {location}'))
+        
+        #making so each number label is in the centre of each polygon
+        centre_polyx = sum(datax) / len(datax)
+        centre_polyy = sum(datay) / len(datay)
+        ax.text(centre_polyx, centre_polyy, str(areas + 1), transform=bng,
+                fontsize=5.5, ha='center', va='center', color='black')
+        
+    #creating and formatting the legend- loc- adjusts position of legend, handleheight and bbox_to_anchor set the position
+    #ncol sets number of coloumns, framealpha sets transparency.
+    ax.legend(handles=legend_names, title='Areas', loc='lower center', handleheight=1, framealpha=0.8, 
+              fontsize='xx-small', ncol=6,  bbox_to_anchor= (0.5, 0.0))
+    
+    ax.set_title('Areas of Edinburgh')
+    plt.show()
+
+if __name__ == '__main__':
+    
+    main(polygon_dict)
+
