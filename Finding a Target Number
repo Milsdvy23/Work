@@ -1,0 +1,42 @@
+import numpy as np
+
+#create a sorted randomised list of 100 values
+sorted_array = np.sort(np.random.rand(10))
+target = np.random.choice(sorted_array)
+
+# while the length of the sorted array is above 2
+while len(sorted_array) > 2: 
+
+    arraylength = len(sorted_array)
+
+# if array is an even length
+    if arraylength % 2 == 0:
+        # identify middle point
+        middle_point = arraylength // 2
+    
+    #if array is an odd length
+    else:
+        middle_point = arraylength // 2
+
+# if the middle point is the target
+    if sorted_array[middle_point] == target:
+        print('match with middle point', target)
+
+#if target is smaller than or equal to sort array middle point
+    if target <= sorted_array[middle_point]: 
+        #split array
+        sorted_array = sorted_array[:middle_point + 1]
+    else:
+        #split array
+        sorted_array = sorted_array[middle_point:]
+
+# if the length of sorted array is 2
+    if len(sorted_array) == 2:
+
+# identify target of index 0
+        if sorted_array[0] == target:
+            print('target identified', sorted_array[0])
+    
+# identify target of index 1
+        if sorted_array[1] == target:
+            print('target identified', sorted_array[1])
