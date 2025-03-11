@@ -1,0 +1,57 @@
+import numpy as np 
+import random
+
+class yourBank(object):
+
+  numb_accounts=0
+
+  def __init__(self,name,balance):
+    '''Class initialiser'''
+    print("Creating a class")
+    self.name=name
+    self.balance=balance
+    yourBank.numb_accounts+=1
+
+  # methods
+  def deposit(self,amt):
+    '''Adds an amount of money'''
+    self.balance=self.balance+amt
+
+  def withdraw(self,amt):
+    '''Removes an amount of money'''
+    self.balance=self.balance-amt
+
+  def inquiry(self):
+    '''Returns the current balance'''
+    return self.balance
+
+class evilbank(yourBank):
+  
+  # copying the original function over
+  def __init__(self,name,balance):
+    '''Class initialiser'''
+    print("Creating a class")
+    self.name=name
+    # saying that the balance is always plus 1000
+    self.balance=balance + 1000
+    yourBank.numb_accounts+=1
+
+# altering inquiry function
+  def inquiry(self):
+
+    #random number generator
+    number = np.random.rand()
+
+# if number is greater than 0.5 (50% chance of this happening)
+    if number > 0.5:
+        # divide by 5 to get 20%
+        self.balance20 = self.balance / 5
+        # add 20% to balance
+        self.balance = self.balance + self.balance20
+
+# return new balance
+    return self.balance
+
+# testing by using an example 
+bank1 = evilbank('natwest', 5000)
+print(bank1.inquiry())
